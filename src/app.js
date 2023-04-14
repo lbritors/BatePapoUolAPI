@@ -15,15 +15,18 @@ dotenv.config();
 dayjs.locale("pt-br");
 
 
-const users = [];
-const messages = [];
 
-let db;
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
-mongoClient.connect().then(() => {db= mongoClient.db()}).catch(err => console.log(err.message));
+try {
+    await mongoClient.connect();
+}catch(err) {
+ console.log(err.message);
+}
+const db = mongoClient.db();
 
 
-app.post("/participants", (req, res) => {
+
+app.post("/participants", async(req, res) => {
     const  {name} = req.body;
     const schema = Joi.object({
         name: Joi.string().required().min(2),
@@ -46,15 +49,21 @@ app.post("/participants", (req, res) => {
         return res.status(422).send(result.error.message)
     }
 
-    db.collection("participants").insertOne(participant).then((result) => {
-        res.status(201).send(result)
-        db.collection("messages").insertOne(entering).then((mensagem) => res.status(201).send(mensagem)).catch(err => res.status(500).send(err.message))})
-    .catch((err) => res.status(500).send(err.message));
+    try{
+        await  db.collection("participants").insertOne(participant);
+        db.collection("messages").insertOne(entering);
+        res.status(201).send(participant).send(entering);
     
+
+    }catch(err) {
+        console.log(err.message);
+        res.sendStatus(500);
+
+    }   
 
 });
 
-app.post("/messages", (req, res) => {
+app.post("/messages",async(req, res) => {
     const {to, text, type} = req.body;
     const {user} = req.headers;
     console.log(user);
@@ -74,13 +83,19 @@ app.post("/messages", (req, res) => {
     }
 
     const result = schema.validate(message);
-    
     if(result.error !== undefined) {
         return res.status(422).send(result.error.message);
     }
 
-    db.collection("messages").insertOne(message).then((n) => {res.status(201).send(n)}).
-    catch((err) => res.status(500).send(err.message));
+    try{
+        await db.collection("messages").insertOne(message);
+        res.status(201).send(message);
+    }catch(err){
+        console.log(err.message);
+        res.sendStatus(500);
+    }
+
+  
 
 });
 
