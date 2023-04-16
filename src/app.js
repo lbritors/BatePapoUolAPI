@@ -63,6 +63,18 @@ app.post("/participants", async(req, res) => {
 
 });
 
+app.get("/participants", async(req, res) => {
+   
+    try{
+        const user = await db.collection("participant").find();
+        res.send(user)
+
+    }catch(err) {
+        console.log(err);
+        res.sendStatus(500);
+    }
+})
+
 app.post("/messages",async(req, res) => {
     const {to, text, type} = req.body;
     const {user} = req.headers;
@@ -98,6 +110,28 @@ app.post("/messages",async(req, res) => {
   
 
 });
+
+app.post("/status", async(req, res) => {
+    const {user} = req.headers;
+    if(!user) {
+        return res.sendStatus(404);
+    }
+    
+    try{
+        const participant = await db.collection("participants").findOneAndUpdate({name: user}, );
+        if(!participant) {
+            res.sendStatus(404);
+        }
+
+       
+
+    }catch(err) {
+        console.log(err.message);
+        res.sendStatus(500);
+
+    }
+
+})
 
   
 app.listen(5000, () => console.log("Listening Port 5000"));
