@@ -66,12 +66,11 @@ app.post("/participants", async(req, res) => {
 app.get("/participants", async(req, res) => {
    
     try{
-        const user = await db.collection("participant").find();
+        const user = await db.collection("participants").find().toArray();
         res.send(user)
 
     }catch(err) {
-        console.log(err);
-        res.sendStatus(500);
+        res.status(500).send(err.message);
     }
 })
 
@@ -111,6 +110,32 @@ app.post("/messages",async(req, res) => {
 
 });
 
+app.get("/messages", async(req, res) => {
+    const {user} = req.headers;
+    const limit = Number(req.query.limit);
+    console.log(limit);
+
+    try{
+        const mensagensFiltro = await db.collection("messages").find({$or: [ {type: "message"}, {to: "Todos"}, {to: user}, {from: user}]}).toArray();
+        if(Number.isNaN(limit)) {
+            return res.send(mensagensFiltro);
+        }
+        if(limit === 0 || limit === undefined || limit < 0 || typeof limit === "NaN") {
+            return res.sendStatus(422);
+        } else {
+            return res.send(mensagensFiltro.slice(-limit));
+        }
+
+        
+
+    }catch(err){
+        res.status(500).send(err.message);
+    }
+
+
+
+});
+
 app.post("/status", async(req, res) => {
     const {user} = req.headers;
     if(!user) {
@@ -118,12 +143,10 @@ app.post("/status", async(req, res) => {
     }
     
     try{
-        const participant = await db.collection("participants").findOneAndUpdate({name: user}, );
+        const participant = await db.collection("participants").findOneAndUpdate({name: user}, {$set: {"lastStatus": Date.now()}});
         if(!participant) {
             res.sendStatus(404);
-        }
-
-       
+        }       
 
     }catch(err) {
         console.log(err.message);
