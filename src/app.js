@@ -50,6 +50,10 @@ app.post("/participants", async(req, res) => {
     }
 
     try{
+        const nameExists = await db.collection("participants").findOne({name: name});
+        if(nameExists !== null) {
+            return res.send(409);
+        }
         await  db.collection("participants").insertOne(participant);
         db.collection("messages").insertOne(entering);
         res.status(201).send(participant).send(entering);
@@ -112,21 +116,21 @@ app.post("/messages",async(req, res) => {
 
 app.get("/messages", async(req, res) => {
     const {user} = req.headers;
-    const limit = Number(req.query.limit);
+    const limit = req.query.limit;
+    const num = Number(limit);
     console.log(limit);
 
     try{
         const mensagensFiltro = await db.collection("messages").find({$or: [ {type: "message"}, {to: "Todos"}, {to: user}, {from: user}]}).toArray();
-        if(Number.isNaN(limit)) {
+        if(limit === undefined) {
             return res.send(mensagensFiltro);
         }
-        if(limit === 0 || limit === undefined || limit < 0 || typeof limit === "NaN") {
+        else if(num === 0 || num < 0 || num === "NaN") {
             return res.sendStatus(422);
         } else {
-            return res.send(mensagensFiltro.slice(-limit));
+            const number = Number(limit);
+            return res.send(mensagensFiltro.slice(-number));
         }
-
-        
 
     }catch(err){
         res.status(500).send(err.message);
