@@ -126,14 +126,15 @@ app.post("/messages",async(req, res) => {
 });
 
 app.get("/messages", async(req, res) => {
-    const {user} = req.headers.user;
+    const {user} = req.headers;
     const limit = req.query.limit;
     const num = Number(limit);
     console.log(limit);
+    console.log(user);
 
     try{
         const mensagensFiltro = await db.collection("messages").find({$or: [{to: "Todos"}, {to: user}, {from: user}]}).toArray();
-        if(limit === undefined) {
+        if(!limit) {
             return res.send(mensagensFiltro);
         }
         else if(isNaN(num) || num <= 0) {
@@ -197,6 +198,52 @@ app.delete("/messages/:id", async(req, res) => {
     }
 
 })
+
+app.put("/messages/:id", async(req, res) => {
+    const {to, text, type} = req.body;
+    const {user} = req.headers;
+    const {id} =req.params;
+
+
+    const schema = Joi.object({
+        from: Joi.string().required(),
+        to: Joi.string().min(1).required(),
+        text: Joi.string().min(1).required(),
+        type: Joi.any().valid('message', 'private_message').required(),
+    });
+    const message = {
+        from:  user,
+        to: to,
+        text: text,
+        type: type
+    }
+
+    const result = schema.validate(message);
+    if(result.error !== undefined) {
+        return res.status(422).send(result.error.message);
+    }
+
+    
+    try{
+        const usuario = await db.collection("participants").find({name:user}).toArray();
+        const match = await db.collection("messages").find({_id: new ObjectId(id)}).toArray();
+        if(usuario.length === 0) {
+            return res.sendStatus(422);
+        }
+        if(match.length === 0) {
+            return res.sendStatus(404);
+        }
+        if(match[0].from !== user) {
+            return res.sendStatus(401);
+        }
+
+        await db.collection("messages").updateOne()
+
+    }catch(err) {
+        res.status(500).send(err.message);
+    }
+
+});
 
 setInterval(async() => {
     const hora = Date.now();
