@@ -132,7 +132,7 @@ app.get("/messages", async(req, res) => {
     console.log(limit);
 
     try{
-        const mensagensFiltro = await db.collection("messages").find({$or: [ {type: "message"}, {type: "status"}, {to: "Todos"}, {to: user}, {from: user}]}).toArray();
+        const mensagensFiltro = await db.collection("messages").find({$or: [{to: "Todos"}, {to: user}, {from: user}]}).toArray();
         if(limit === undefined) {
             return res.send(mensagensFiltro);
         }
