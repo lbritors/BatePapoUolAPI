@@ -1,7 +1,7 @@
 import express, { text } from "express";
 import cors from "cors";
 import Joi from "joi";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import dayjs from "dayjs";
 import 'dayjs/locale/pt-br.js';
@@ -44,10 +44,9 @@ app.post("/participants", async(req, res) => {
         return res.status(422).send(result.error.message)
     }
     
-    
-    const nameStripped = stripHtml(name.trim()).result;
+
     const entering = { 
-        from: nameStripped, 
+        from: name, 
         to: 'Todos', 
         text: 'entra na sala...',
         type: 'status',
@@ -55,7 +54,7 @@ app.post("/participants", async(req, res) => {
         console.log(result);
 
     try{
-        const nameExists = await db.collection("participants").findOne({name: nameStripped});
+        const nameExists = await db.collection("participants").findOne({name: name});
         if(nameExists) {
             return res.sendStatus(409);
         }
@@ -97,10 +96,10 @@ app.post("/messages",async(req, res) => {
     });
    
     const message = {
-        from: stripHtml(user.trim()).result,
-        to: stripHtml(to.trim()).result,
-        text: stripHtml(text.trim()).result,
-        type: stripHtml(type.trim()).result,
+        from:  user,
+        to: to,
+        text: text,
+        type: type,
         time: dayjs().format('HH:mm:ss')
     }
 
@@ -169,6 +168,32 @@ app.post("/status", async(req, res) => {
         console.log(err.message);
         res.sendStatus(500);
 
+    }
+
+})
+
+app.delete("/messages/:id", async(req, res) => {
+    const {user} = req.headers;
+    const{ id } = req.params;
+
+    try{
+        
+        const message = await db.collection("messages").find({_id: new ObjectId(id)}).toArray();
+        
+        if(message.length === 0) {
+            return res.sendStatus(404);
+        } 
+        if(message[0].from !== user) {
+            return res.sendStatus(401);
+        }
+        
+        const deleting = await db.collection("messages").findOneAndDelete({_id: new ObjectId(id)});
+        if(deleting.deletedCount !== 0) {
+            return res.sendStatus(200);
+        }
+    
+    }catch(err) {
+        res.status(500).send(err.message);
     }
 
 })
