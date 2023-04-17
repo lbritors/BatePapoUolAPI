@@ -4,7 +4,9 @@ import Joi from "joi";
 import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
 import dayjs from "dayjs";
-import 'dayjs/locale/pt-br.js'
+import 'dayjs/locale/pt-br.js';
+import { stripHtml } from "string-strip-html";
+import {strict as assert} from "assert" 
 
 
 
@@ -28,17 +30,19 @@ const db = mongoClient.db();
 
 app.post("/participants", async(req, res) => {
     const  {name} = req.body;
+    const nameStripped = stripHtml(name.trim()).result;
+    console.log(nameStripped);
     const schema = Joi.object({
         name: Joi.string().required().min(2),
         lastStatus: Joi.date().default(Date.now)
     })
     const participant = {
-        name: name,
+        name: nameStripped,
         lastStatus: Date.now()
     };
     const result = schema.validate(participant, {abortEarly: false});
     const entering = { 
-    from: name, 
+    from: nameStripped, 
     to: 'Todos', 
     text: 'entra na sala...',
     type: 'status',
@@ -79,6 +83,7 @@ app.get("/participants", async(req, res) => {
 
 app.post("/messages",async(req, res) => {
     const {to, text, type} = req.body;
+    
     const {user} = req.headers;
     console.log(user);
     const schema = Joi.object({
@@ -89,10 +94,10 @@ app.post("/messages",async(req, res) => {
         time: Joi.allow()
     });
     const message = {
-        from: user,
-        to: to,
-        text: text,
-        type: type,
+        from: stripHtml(user.trim()).result,
+        to: stripHtml(to.trim()).result,
+        text: stripHtml(text.trim()).result,
+        type: stripHtml(type.trim()).result,
         time: dayjs().format('HH:mm:ss')
     }
 
