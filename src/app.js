@@ -36,14 +36,13 @@ app.post("/participants", async(req, res) => {
         name: name,
         lastStatus: Date.now()
     };
-    const result = schema.validate(participant);
+    const result = schema.validate(participant, {abortEarly: false});
     const entering = { 
     from: name, 
     to: 'Todos', 
     text: 'entra na sala...',
     type: 'status',
     time: dayjs().format('HH:mm:ss') }
-    console.log(entering.time);
       
     if(result.error !== undefined) {
         return res.status(422).send(result.error.message)
@@ -51,17 +50,17 @@ app.post("/participants", async(req, res) => {
 
     try{
         const nameExists = await db.collection("participants").findOne({name: name});
-        if(nameExists !== null) {
+        if(nameExists) {
             return res.sendStatus(409);
         }
         await  db.collection("participants").insertOne(participant);
-        db.collection("messages").insertOne(entering);
-        res.status(201).send(participant).send(entering);
+        await db.collection("messages").insertOne(entering);
+        return res.sendStatus(201);
     
 
     }catch(err) {
-        console.log(err.message);
-        res.sendStatus(500);
+        
+        res.status(500).send(err.message);
 
     }   
 
@@ -120,7 +119,7 @@ app.post("/messages",async(req, res) => {
 });
 
 app.get("/messages", async(req, res) => {
-    const {user} = req.headers;
+    const {user} = req.headers.user;
     const limit = req.query.limit;
     const num = Number(limit);
     console.log(limit);
@@ -151,31 +150,12 @@ app.post("/status", async(req, res) => {
     if(!user) {
         return res.sendStatus(404);
     }
-    
     try{
         const participant = await db.collection("participants").findOneAndUpdate({name: user}, {$set: {"lastStatus": Date.now()}});
-        
-        setInterval(async() => {
-            const hora = Date.now();
-            const loggedOut =  await db.collection("participants").find({lastStatus: {$lt: hora - 10000}});
-            loggedOut.forEach(part => {
-                db.collection("messages").insertOne({ 
-                    from: part.name,
-                    to: 'Todos',
-                    text: 'sai da sala...',
-                    type: 'status',
-                    time: dayjs().format('HH:mm:ss')
-                })
-                db.collection("participants").findOneAndDelete({name: part.name});
-            })
-            
-
-        },15000)
         if(participant.value === null) {
             return res.sendStatus(404);
         }   
         res.sendStatus(200);
-
 
     }catch(err) {
         console.log(err.message);
@@ -185,5 +165,21 @@ app.post("/status", async(req, res) => {
 
 })
 
+setInterval(async() => {
+    const hora = Date.now();
+    const loggedOut =  await db.collection("participants").find({lastStatus: {$lt: hora - 10000}});
+    loggedOut.forEach(part => {
+        db.collection("messages").insertOne({ 
+            from: part.name,
+            to: 'Todos',
+            text: 'sai da sala...',
+            type: 'status',
+            time: dayjs().format('HH:mm:ss')
+        })
+        db.collection("participants").findOneAndDelete({name: part.name});
+    })
+    
+
+},15000);
   
 app.listen(5000, () => console.log("Listening Port 5000"));
