@@ -204,7 +204,6 @@ app.put("/messages/:id", async(req, res) => {
     const {user} = req.headers;
     const {id} =req.params;
 
-
     const schema = Joi.object({
         from: Joi.string().required(),
         to: Joi.string().min(1).required(),
@@ -222,7 +221,6 @@ app.put("/messages/:id", async(req, res) => {
     if(result.error !== undefined) {
         return res.status(422).send(result.error.message);
     }
-
     
     try{
         const usuario = await db.collection("participants").find({name:user}).toArray();
@@ -237,7 +235,8 @@ app.put("/messages/:id", async(req, res) => {
             return res.sendStatus(401);
         }
 
-        await db.collection("messages").updateOne()
+        await db.collection("messages").updateOne({_id:new ObjectId(id)}, {$set: message});
+        res.send("Updated");
 
     }catch(err) {
         res.status(500).send(err.message);
