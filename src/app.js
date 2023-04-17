@@ -134,7 +134,7 @@ app.get("/messages", async(req, res) => {
         if(limit === undefined) {
             return res.send(mensagensFiltro);
         }
-        else if(num === 0 || num < 0 || num === "NaN") {
+        else if(isNaN(num) || num <= 0) {
             return res.sendStatus(422);
         } else {
             const number = Number(limit);
