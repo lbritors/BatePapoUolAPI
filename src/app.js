@@ -105,7 +105,7 @@ app.post("/messages",async(req, res) => {
         const usuario = await db.collection("participants").find({name:user}).toArray();
         console.log(usuario)
         if(usuario.length === 0) {
-            return res.status(422);
+            return res.sendStatus(422);
         }
         await db.collection("messages").insertOne(message);
         res.status(201).send(message);
