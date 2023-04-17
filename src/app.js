@@ -30,7 +30,7 @@ app.post("/participants", async(req, res) => {
     const  {name} = req.body;
     const schema = Joi.object({
         name: Joi.string().required().min(2),
-        lastStatus: Joi.allow()
+        lastStatus: Joi.date().default(Date.now)
     })
     const participant = {
         name: name,
@@ -52,7 +52,7 @@ app.post("/participants", async(req, res) => {
     try{
         const nameExists = await db.collection("participants").findOne({name: name});
         if(nameExists !== null) {
-            return res.send(409);
+            return res.sendStatus(409);
         }
         await  db.collection("participants").insertOne(participant);
         db.collection("messages").insertOne(entering);
@@ -76,14 +76,14 @@ app.get("/participants", async(req, res) => {
     }catch(err) {
         res.status(500).send(err.message);
     }
-})
+});
 
 app.post("/messages",async(req, res) => {
     const {to, text, type} = req.body;
     const {user} = req.headers;
     console.log(user);
     const schema = Joi.object({
-        from: Joi.required(),
+        from: Joi.string().required(),
         to: Joi.string().min(1).required(),
         text: Joi.string().min(1).required(),
         type: Joi.any().valid('message', 'private_message').required(),
@@ -103,8 +103,9 @@ app.post("/messages",async(req, res) => {
     }
 
     try{
-        const usuario = await db.collection("participants").find({name:user});
-        if(!usuario) {
+        const usuario = await db.collection("participants").find({name:user}).toArray();
+        console.log(usuario)
+        if(usuario.length === 0) {
             return res.status(422);
         }
         await db.collection("messages").insertOne(message);
@@ -146,16 +147,35 @@ app.get("/messages", async(req, res) => {
 
 app.post("/status", async(req, res) => {
     const {user} = req.headers;
+
     if(!user) {
         return res.sendStatus(404);
     }
     
     try{
         const participant = await db.collection("participants").findOneAndUpdate({name: user}, {$set: {"lastStatus": Date.now()}});
-        if(!participant) {
+        
+        setInterval(async() => {
+            const hora = Date.now();
+            const loggedOut =  await db.collection("participants").find({lastStatus: {$lt: hora - 10000}});
+            loggedOut.forEach(part => {
+                db.collection("messages").insertOne({ 
+                    from: part.name,
+                    to: 'Todos',
+                    text: 'sai da sala...',
+                    type: 'status',
+                    time: dayjs().format('HH:mm:ss')
+                })
+                db.collection("participants").findOneAndDelete({name: part.name});
+            })
+            
+
+        },15000)
+        if(participant.value === null) {
             return res.sendStatus(404);
         }   
-        res.send(200);    
+        res.sendStatus(200);
+
 
     }catch(err) {
         console.log(err.message);
