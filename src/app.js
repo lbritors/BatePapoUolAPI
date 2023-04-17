@@ -30,30 +30,32 @@ const db = mongoClient.db();
 
 app.post("/participants", async(req, res) => {
     const  {name} = req.body;
-    const nameStripped = stripHtml(name.trim()).result;
-    console.log(nameStripped);
     const schema = Joi.object({
         name: Joi.string().required().min(2),
         lastStatus: Joi.date().default(Date.now)
     })
     const participant = {
-        name: nameStripped,
+        name: name,
         lastStatus: Date.now()
     };
+    
     const result = schema.validate(participant, {abortEarly: false});
-    const entering = { 
-    from: nameStripped, 
-    to: 'Todos', 
-    text: 'entra na sala...',
-    type: 'status',
-    time: dayjs().format('HH:mm:ss') }
-      
     if(result.error !== undefined) {
         return res.status(422).send(result.error.message)
     }
+    
+    
+    const nameStripped = stripHtml(name.trim()).result;
+    const entering = { 
+        from: nameStripped, 
+        to: 'Todos', 
+        text: 'entra na sala...',
+        type: 'status',
+        time: dayjs().format('HH:mm:ss') }
+        console.log(result);
 
     try{
-        const nameExists = await db.collection("participants").findOne({name: name});
+        const nameExists = await db.collection("participants").findOne({name: nameStripped});
         if(nameExists) {
             return res.sendStatus(409);
         }
@@ -93,6 +95,7 @@ app.post("/messages",async(req, res) => {
         type: Joi.any().valid('message', 'private_message').required(),
         time: Joi.allow()
     });
+   
     const message = {
         from: stripHtml(user.trim()).result,
         to: stripHtml(to.trim()).result,
